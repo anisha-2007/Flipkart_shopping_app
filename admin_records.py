@@ -7,7 +7,7 @@ def view_records():
 root = tk.Tk()
 root.title("Admin Panel")
 root.geometry("600x500")
-root.configure(bg="white")
+root.configure(bg="black")
 
 tk.Label(
     root,
