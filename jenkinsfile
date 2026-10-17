@@ -18,41 +18,22 @@ pipeline {
             }
         }
 
-        stage('Docker Hub Login and Push') {
-            steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'dockerhub-token-secret',
-                        variable: 'DOCKER_TOKEN'
-                    )
-                ]) {
-                    bat '''
-                        @echo off
-                        echo %DOCKER_TOKEN% | docker login --username anishaflipkart27 --password-stdin
-
-                        if errorlevel 1 (
-                            echo Docker Hub login failed.
-                            exit /b 1
-                        )
-
-                        echo Docker Hub login succeeded.
-
-                        docker push %DOCKER_IMAGE%
-
-                        if errorlevel 1 (
-                            echo Docker image push failed.
-                            docker logout
-                            exit /b 1
-                        )
-
-                        echo Docker image pushed successfully.
-                        docker logout
-                    '''
-                }
-            }
+        stage('Test Docker Hub Login') {
+    steps {
+        withCredentials([
+            string(
+                credentialsId: 'dockerhub-token-secret',
+                variable: 'DOCKER_TOKEN'
+            )
+        ]) {
+            bat '''
+                @echo off
+                docker logout
+                docker login --username anishaflipkart27 --password-stdin < NUL
+            '''
         }
     }
-
+}
     post {
         success {
             echo 'SUCCESS: Docker image pushed to Docker Hub.'
