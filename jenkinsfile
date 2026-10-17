@@ -18,42 +18,31 @@ pipeline {
             }
         }
 
-        stage('Verify Docker Image') {
-            steps {
-                bat 'docker images %DOCKER_IMAGE%'
-            }
-        }
-
-        stage('Login and Push to Docker Hub') {
+        stage('Docker Hub Login and Push') {
             steps {
                 withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-pat-test',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
+                    string(
+                        credentialsId: 'dockerhub-token-secret',
+                        variable: 'DOCKER_TOKEN'
                     )
                 ]) {
                     powershell '''
                         $ErrorActionPreference = "Stop"
+                        $token = $env:DOCKER_TOKEN.Trim()
 
-                        if ([string]::IsNullOrWhiteSpace($env:DOCKER_USER)) {
-                            throw "Docker username is empty."
+                        if ([string]::IsNullOrWhiteSpace($token)) {
+                            throw "Docker Hub token is empty."
                         }
-
-                        if ([string]::IsNullOrWhiteSpace($env:DOCKER_PASS)) {
-                            throw "Docker token is empty."
-                        }
-
-                        Write-Host "Username received: $($env:DOCKER_USER)"
-Write-Host "Password is empty: $([string]::IsNullOrEmpty($env:DOCKER_PASS))"
 
                         $token | docker login `
-                            --username $env:DOCKER_USER `
+                            --username "anishaflipkart27" `
                             --password-stdin
 
                         if ($LASTEXITCODE -ne 0) {
                             throw "Docker Hub login failed."
                         }
+
+                        Write-Host "Docker Hub login succeeded."
 
                         docker push $env:DOCKER_IMAGE
 
@@ -62,10 +51,6 @@ Write-Host "Password is empty: $([string]::IsNullOrEmpty($env:DOCKER_PASS))"
                         }
 
                         docker logout
-
-                        if ($LASTEXITCODE -ne 0) {
-                            Write-Host "Docker logout returned a non-zero exit code."
-                        }
                     '''
                 }
             }
@@ -76,9 +61,8 @@ Write-Host "Password is empty: $([string]::IsNullOrEmpty($env:DOCKER_PASS))"
         success {
             echo 'Docker image pushed successfully!'
         }
-
         failure {
-            echo 'Pipeline failed. Check the stage that reported the error.'
+            echo 'Pipeline failed. Check Console Output.'
         }
     }
 }
