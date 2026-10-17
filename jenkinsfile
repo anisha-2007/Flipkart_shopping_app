@@ -1,0 +1,23 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                bat 'docker build -t anishaflipkart27/flipkart_shopping_app:latest .'
+            }
+        }
+
+        stage('Test Docker Image') {
+            steps {
+                bat 'docker images'
+            }
+        }
+    }
+}
