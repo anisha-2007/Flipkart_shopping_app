@@ -44,7 +44,8 @@ pipeline {
                             throw "Docker token is empty."
                         }
 
-                        $token = $env:DOCKER_PASS.Trim()
+                        Write-Host "Username received: $($env:DOCKER_USER)"
+Write-Host "Password is empty: $([string]::IsNullOrEmpty($env:DOCKER_PASS))"
 
                         $token | docker login `
                             --username $env:DOCKER_USER `
