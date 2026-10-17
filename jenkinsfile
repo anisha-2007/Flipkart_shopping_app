@@ -19,13 +19,24 @@ pipeline {
         }
 
         stage('Docker Hub Login and Push') {
-            steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'dockerhub-token-secret',
-                        variable: 'DOCKER_TOKEN'
-                    )
-                ]) {
+    steps {
+        withCredentials([
+            string(
+                credentialsId: 'dockerhub-token-secret',
+                variable: 'DOCKER_TOKEN'
+            )
+        ]) {
+            bat '''
+                @echo off
+                echo %DOCKER_TOKEN% | docker login --username anishaflipkart27 --password-stdin
+                if errorlevel 1 exit /b 1
+                docker push %DOCKER_IMAGE%
+                if errorlevel 1 exit /b 1
+                docker logout
+            '''
+        }
+    }
+} {
                     powershell '''
                         $ErrorActionPreference = "Stop"
 
