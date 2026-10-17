@@ -19,28 +19,58 @@ pipeline {
         }
 
         stage('Test Docker Hub Login') {
-    steps {
-        withCredentials([
-            string(
-                credentialsId: 'dockerhub-token-secret',
-                variable: 'DOCKER_TOKEN'
-            )
-        ]) {
-            bat '''
-                @echo off
-                docker logout
-                docker login --username anishaflipkart27 --password-stdin < NUL
-            '''
+            steps {
+                withCredentials([
+                    string(
+                        credentialsId: 'dockerhub-token-secret',
+                        variable: 'DOCKER_TOKEN'
+                    )
+                ]) {
+                    bat '''
+                        @echo off
+                        docker logout >nul 2>&1
+                        echo %DOCKER_TOKEN% | docker login --username anishaflipkart27 --password-stdin
+
+                        if errorlevel 1 (
+                            echo Docker Hub login failed.
+                            exit /b 1
+                        )
+
+                        echo Docker Hub login succeeded.
+                    '''
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                bat '''
+                    @echo off
+                    docker push %DOCKER_IMAGE%
+
+                    if errorlevel 1 (
+                        echo Docker image push failed.
+                        exit /b 1
+                    )
+
+                    echo Docker image pushed successfully.
+                    docker logout
+                '''
+            }
         }
     }
-}
+
     post {
         success {
             echo 'SUCCESS: Docker image pushed to Docker Hub.'
         }
 
         failure {
-            echo 'FAILED: Check the Console Output for the exact error.'
+            echo 'FAILED: Check Console Output for the exact error.'
+        }
+
+        always {
+            bat 'docker logout'
         }
     }
 }
