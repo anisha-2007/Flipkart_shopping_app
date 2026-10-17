@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -37,22 +36,24 @@ pipeline {
                     powershell '''
                         $ErrorActionPreference = "Stop"
 
-                        if ([string]::IsNullOrWhiteSpace($env:DOCKER_USER)) {
+                        $username = $env:DOCKER_USER
+                        $token = $env:DOCKER_PASS.Trim()
+
+                        if ([string]::IsNullOrWhiteSpace($username)) {
                             throw "Docker Hub username is empty."
                         }
 
-                        if ([string]::IsNullOrWhiteSpace($env:DOCKER_PASS)) {
+                        if ([string]::IsNullOrWhiteSpace($token)) {
                             throw "Docker Hub token is empty."
                         }
 
-                        $token = $env:DOCKER_PASS.Trim()
-                        $token | docker login `
-                            --username $env:DOCKER_USER `
-                            --password-stdin
+                        $token | docker login --username $username --password-stdin
 
                         if ($LASTEXITCODE -ne 0) {
-                            throw "Docker Hub login failed. Check the Jenkins credential value and token validity."
+                            throw "Docker Hub login failed."
                         }
+
+                        Write-Host "Docker Hub login succeeded in Jenkins."
                     '''
                 }
             }
