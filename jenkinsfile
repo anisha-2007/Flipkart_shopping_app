@@ -28,11 +28,14 @@ pipeline {
                 ]) {
                     powershell '''
                         $ErrorActionPreference = "Stop"
+
+                        if ([string]::IsNullOrWhiteSpace($env:DOCKER_TOKEN)) {
+                            throw "Jenkins Docker token is empty."
+                        }
+
                         $token = $env:DOCKER_TOKEN.Trim()
 
-                        if ([string]::IsNullOrWhiteSpace($token)) {
-                            throw "Docker Hub token is empty."
-                        }
+                        Write-Host "Token length: $($token.Length)"
 
                         $token | docker login `
                             --username "anishaflipkart27" `
@@ -50,6 +53,8 @@ pipeline {
                             throw "Docker image push failed."
                         }
 
+                        Write-Host "Docker image pushed successfully."
+
                         docker logout
                     '''
                 }
@@ -59,10 +64,11 @@ pipeline {
 
     post {
         success {
-            echo 'Docker image pushed successfully!'
+            echo 'SUCCESS: Docker image pushed to Docker Hub.'
         }
+
         failure {
-            echo 'Pipeline failed. Check Console Output.'
+            echo 'FAILED: Check the Console Output for the exact error.'
         }
     }
 }
