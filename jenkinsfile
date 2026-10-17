@@ -24,7 +24,7 @@ pipeline {
             }
         }
 
-        stage('Login to Docker Hub') {
+        stage('Login and Push to Docker Hub') {
             steps {
                 withCredentials([
                     usernamePassword(
@@ -36,43 +36,48 @@ pipeline {
                     powershell '''
                         $ErrorActionPreference = "Stop"
 
-                        $username = $env:DOCKER_USER
+                        if ([string]::IsNullOrWhiteSpace($env:DOCKER_USER)) {
+                            throw "Docker username is empty."
+                        }
+
+                        if ([string]::IsNullOrWhiteSpace($env:DOCKER_PASS)) {
+                            throw "Docker token is empty."
+                        }
+
                         $token = $env:DOCKER_PASS.Trim()
 
-                        if ([string]::IsNullOrWhiteSpace($username)) {
-                            throw "Docker Hub username is empty."
-                        }
-
-                        if ([string]::IsNullOrWhiteSpace($token)) {
-                            throw "Docker Hub token is empty."
-                        }
-
-                        $token | docker login --username $username --password-stdin
+                        $token | docker login `
+                            --username $env:DOCKER_USER `
+                            --password-stdin
 
                         if ($LASTEXITCODE -ne 0) {
                             throw "Docker Hub login failed."
                         }
 
-                        Write-Host "Docker Hub login succeeded in Jenkins."
+                        docker push $env:DOCKER_IMAGE
+
+                        if ($LASTEXITCODE -ne 0) {
+                            throw "Docker image push failed."
+                        }
+
+                        docker logout
+
+                        if ($LASTEXITCODE -ne 0) {
+                            Write-Host "Docker logout returned a non-zero exit code."
+                        }
                     '''
                 }
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                bat 'docker push %DOCKER_IMAGE%'
             }
         }
     }
 
     post {
         success {
-            echo 'Docker image pushed successfully to Docker Hub.'
+            echo 'Docker image pushed successfully!'
         }
 
         failure {
-            echo 'Pipeline failed. Check the failed stage in the Jenkins console log.'
+            echo 'Pipeline failed. Check the stage that reported the error.'
         }
     }
 }
