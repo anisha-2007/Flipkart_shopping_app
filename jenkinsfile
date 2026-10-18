@@ -70,7 +70,7 @@ pipeline {
 
                         $startInfo = New-Object System.Diagnostics.ProcessStartInfo
                         $startInfo.FileName = $dockerPath
-                        $startInfo.Arguments = "login --username anishaflipkart27 --password-stdin --debug"
+                        $startInfo.Arguments = "login --username anishaflipkart27 --password-stdin"
                         $startInfo.UseShellExecute = $false
                         $startInfo.RedirectStandardInput = $true
                         $startInfo.RedirectStandardOutput = $true
