@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'anishaflipkart27/flipkart_shopping_app'
         DOCKER_TAG   = 'latest'
+        DOCKER_CONFIG = 'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Flipkart-Pipiline\\.docker-config'
     }
 
     options {
@@ -24,6 +25,8 @@ pipeline {
                     @echo off
                     docker --version
                     if errorlevel 1 exit /b 1
+                    docker info --format "{{.OperatingSystem}}"
+                    if errorlevel 1 exit /b 1
                 '''
             }
         }
@@ -37,6 +40,7 @@ pipeline {
                 '''
             }
         }
+
         stage('Login to Docker Hub') {
             steps {
                 withCredentials([
@@ -45,12 +49,61 @@ pipeline {
                         variable: 'DOCKER_TOKEN'
                     )
                 ]) {
-                    bat '''
-                        @echo off
-                        echo Logging in to Docker Hub...
-                        echo %DOCKER_TOKEN% | docker login --username anishaflipkart27 --password-stdin
-                        if errorlevel 1 exit /b 1
-                        echo Docker Hub login succeeded.
+                    powershell '''
+                        $ErrorActionPreference = "Stop"
+
+                        $docker = "C:\\Users\\anish\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
+
+                        if (-not (Test-Path $docker)) {
+                            throw "Docker executable not found."
+                        }
+
+                        $config = Join-Path $env:WORKSPACE ".docker-config"
+                        New-Item -ItemType Directory -Force -Path $config | Out-Null
+                        $env:DOCKER_CONFIG = $config
+
+                        if ([string]::IsNullOrWhiteSpace($env:DOCKER_TOKEN)) {
+                            throw "Docker Hub credential is empty."
+                        }
+
+                        $psi = New-Object System.Diagnostics.ProcessStartInfo
+                        $psi.FileName = $docker
+                        $psi.Arguments = "login --username anishaflipkart27 --password-stdin"
+                        $psi.UseShellExecute = $false
+                        $psi.RedirectStandardInput = $true
+                        $psi.RedirectStandardOutput = $true
+                        $psi.RedirectStandardError = $true
+                        $psi.CreateNoWindow = $true
+                        $psi.EnvironmentVariables["DOCKER_CONFIG"] = $config
+
+                        $p = New-Object System.Diagnostics.Process
+                        $p.StartInfo = $psi
+
+                        if (-not $p.Start()) {
+                            throw "Could not start Docker login."
+                        }
+
+                        $outTask = $p.StandardOutput.ReadToEndAsync()
+                        $errTask = $p.StandardError.ReadToEndAsync()
+
+                        $token = $env:DOCKER_TOKEN.Trim()
+                        $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($token + "`n")
+                        $p.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
+                        $p.StandardInput.Close()
+                        $p.WaitForExit()
+
+                        if ($outTask.Result) {
+                            Write-Host $outTask.Result
+                        }
+
+                        if ($p.ExitCode -ne 0) {
+                            if ($errTask.Result) {
+                                Write-Host $errTask.Result
+                            }
+                            throw "Docker Hub login failed."
+                        }
+
+                        Write-Host "Docker Hub login succeeded."
                     '''
                 }
             }
@@ -61,14 +114,10 @@ pipeline {
                 powershell '''
                     $ErrorActionPreference = "Stop"
 
-                    $dockerCommand = Get-Command docker.exe -ErrorAction SilentlyContinue
-                    if (-not $dockerCommand) {
-                        $dockerCommand = Get-Command docker -ErrorAction Stop
-                    }
-
+                    $docker = "C:\\Users\\anish\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
                     $env:DOCKER_CONFIG = Join-Path $env:WORKSPACE ".docker-config"
 
-                    & $dockerCommand.Source push "$env:DOCKER_IMAGE`:$env:DOCKER_TAG"
+                    & $docker push "$env:DOCKER_IMAGE`:$env:DOCKER_TAG"
 
                     if ($LASTEXITCODE -ne 0) {
                         throw "Docker image push failed."
@@ -89,17 +138,13 @@ pipeline {
 
         always {
             powershell '''
-                $dockerConfigPath = Join-Path $env:WORKSPACE ".docker-config"
+                $docker = "C:\\Users\\anish\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
+                $config = Join-Path $env:WORKSPACE ".docker-config"
 
-                if (Test-Path $dockerConfigPath) {
-                    $dockerCommand = Get-Command docker.exe -ErrorAction SilentlyContinue
-
-                    if ($dockerCommand) {
-                        $env:DOCKER_CONFIG = $dockerConfigPath
-                        & $dockerCommand.Source logout
-                    }
-
-                    Remove-Item -Recurse -Force $dockerConfigPath -ErrorAction SilentlyContinue
+                if (Test-Path $config) {
+                    $env:DOCKER_CONFIG = $config
+                    & $docker logout
+                    Remove-Item -Recurse -Force $config -ErrorAction SilentlyContinue
                 }
             '''
         }
