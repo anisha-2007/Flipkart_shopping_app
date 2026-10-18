@@ -69,7 +69,9 @@ pipeline {
                         Write-Host "Starting Docker Hub login..."
 
                         $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-                        $startInfo.EnvironmentVariables["DOCKER_CONFIG"] = "C:/Users/anish/.docker"
+                        $dockerConfigPath = Join-Path $env:WORKSPACE ".docker-config"
+                        New-Item -ItemType Directory -Force -Path $dockerConfigPath | Out-Null
+                        $startInfo.EnvironmentVariables["DOCKER_CONFIG"] = $dockerConfigPath
                         $startInfo.FileName = $dockerPath
                         $startInfo.Arguments = "login --username anishaflipkart27 --password-stdin"
                         $startInfo.UseShellExecute = $false
