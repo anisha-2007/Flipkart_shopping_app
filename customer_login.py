@@ -5,7 +5,7 @@ def open_page(page):
     import sys
 
     pages = {
-        "browse": "browseproduct.py",
+        "browse": "browse_product.py",
         "orders": "orders_tracking.py"
     }
 
