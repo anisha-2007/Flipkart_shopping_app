@@ -7,7 +7,7 @@ import os
 # Open another Python page
 def open_page(page):
     pages = {
-        "browse": "browseproduct.py",
+        "browse": "browse_product.py",
         "orders": "orders_tracking.py"
     }
 
