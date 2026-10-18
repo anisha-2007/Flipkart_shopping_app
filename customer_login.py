@@ -25,30 +25,33 @@ def login():
             dashboard,
             text="Browse Products",
             width=25,
-            height=2
+            height=2,
+            command=lambda: open_page("browse")
         ).pack(pady=10)
 
         tk.Button(
             dashboard,
             text="My Wishlist",
             width=25,
-            height=2
+            height=2,
+            command=lambda: open_page("wishlist")
         ).pack(pady=10)
 
         tk.Button(
             dashboard,
             text="My Orders",
             width=25,
-            height=2
+            height=2,
+            command=lambda: open_page("orders")
         ).pack(pady=10)
 
         tk.Button(
             dashboard,
             text="Account Details",
             width=25,
-            height=2
+            height=2,
+            command=lambda: open_page("account")
         ).pack(pady=10)
-
     else:
         messagebox.showerror("Error", "Please enter Email and Password")
 
