@@ -70,8 +70,16 @@ pipeline {
                         Write-Host "Docker executable: $dockerPath"
                         Write-Host "Starting Docker Hub login..."
 
-                        $env:DOCKER_TOKEN |
-                            & $dockerPath login --username anishaflipkart27 --password-stdin
+                        $token = [string]$env:DOCKER_TOKEN
+                        $token = $token.Trim()
+
+                        $process = Start-Process `
+                            -FilePath $dockerPath `
+                            -ArgumentList @("login", "--username", "anishaflipkart27", "--password-stdin") `
+                            -NoNewWindow `
+                            -PassThru `
+                            -Wait `
+                            -RedirectStandardInput "$env:WORKSPACE\docker-token-input.txt"
 
                         if ($LASTEXITCODE -ne 0) {
                             throw "Docker Hub login failed with exit code $LASTEXITCODE."
