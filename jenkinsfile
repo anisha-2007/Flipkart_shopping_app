@@ -88,7 +88,8 @@ pipeline {
                         $stderrTask = $process.StandardError.ReadToEndAsync()
 
                         $utf8 = New-Object System.Text.UTF8Encoding($false)
-                        $tokenBytes = $utf8.GetBytes($env:DOCKER_TOKEN + "`n")
+                        $cleanToken = $env:DOCKER_TOKEN. Trim()
+                        $tokenBytes = $utf8.GetBytes($cleanToken + "`n")
 
                         $process.StandardInput.BaseStream.Write(
                             $tokenBytes,
