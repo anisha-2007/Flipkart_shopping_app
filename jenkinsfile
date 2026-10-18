@@ -89,6 +89,8 @@ pipeline {
 
                         $utf8 = New-Object System.Text.UTF8Encoding($false)
                         $cleanToken = $env:DOCKER_TOKEN. Trim()
+                        Write-Host "Token length received by Jenkins: $($cleanToken.Length)"
+                        Write-Host "Token has surrounding whitespace: $($cleanToken -ne $env:DOCKER_TOKEN)"
                         $tokenBytes = $utf8.GetBytes($cleanToken + "`n")
 
                         $process.StandardInput.BaseStream.Write(
