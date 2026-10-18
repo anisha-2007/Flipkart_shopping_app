@@ -1,5 +1,21 @@
 import tkinter as tk
 from tkinter import messagebox
+def open_page(page):
+    import subprocess
+    import sys
+
+    pages = {
+        "browse": "browseproduct.py",
+        "orders": "orders_tracking.py"
+    }
+
+    if page in pages:
+        subprocess.Popen([sys.executable, pages[page]])
+    else:
+        messagebox.showinfo(
+            "Coming Soon",
+            f"{page.title()} page connection pending"
+        )
 
 def login():
     email = email_entry.get()
