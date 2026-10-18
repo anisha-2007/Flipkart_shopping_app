@@ -4,7 +4,6 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'anishaflipkart27/flipkart_shopping_app'
         DOCKER_TAG   = 'latest'
-        DOCKER_CONFIG = 'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Flipkart-Pipiline\\.docker-config'
     }
 
     options {
@@ -41,38 +40,20 @@ pipeline {
             }
         }
 
-        stage('Login to Docker Hub') {
-                steps {
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: 'dockerhub-username-pat',
-                            usernameVariable: 'DOCKER_USER',
-                            passwordVariable: 'DOCKER_PAT'
-                        )
-                    ]) {
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    docker.withRegistry(
+                        'https://index.docker.io/v1/',
+                        'dockerhub-username-pat'
+                    ) {
                         bat '''
                             @echo off
-                            echo %DOCKER_PAT% | docker login -u "%DOCKER_USER%" --password-stdin
+                            docker push %DOCKER_IMAGE%:%DOCKER_TAG%
                             if errorlevel 1 exit /b 1
                         '''
                     }
                 }
-            }
-
-        stage('Push Docker Image') {
-            steps {
-                powershell '''
-                    $ErrorActionPreference = "Stop"
-
-                    $docker = "C:\\Users\\anish\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
-                    $env:DOCKER_CONFIG = Join-Path $env:WORKSPACE ".docker-config"
-
-                    & $docker push "$env:DOCKER_IMAGE`:$env:DOCKER_TAG"
-
-                    if ($LASTEXITCODE -ne 0) {
-                        throw "Docker image push failed."
-                    }
-                '''
             }
         }
     }
@@ -84,19 +65,6 @@ pipeline {
 
         failure {
             echo 'FAILED: Check Console Output for the failing stage.'
-        }
-
-        always {
-            powershell '''
-                $docker = "C:\\Users\\anish\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
-                $config = Join-Path $env:WORKSPACE ".docker-config"
-
-                if (Test-Path $config) {
-                    $env:DOCKER_CONFIG = $config
-                    & $docker logout
-                    Remove-Item -Recurse -Force $config -ErrorAction SilentlyContinue
-                }
-            '''
         }
     }
 }
