@@ -42,72 +42,22 @@ pipeline {
         }
 
         stage('Login to Docker Hub') {
-            steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'dockerhub-token-secret',
-                        variable: 'DOCKER_TOKEN'
-                    )
-                ]) {
-                    powershell '''
-                        $ErrorActionPreference = "Stop"
-
-                        $docker = "C:\\Users\\anish\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe"
-
-                        if (-not (Test-Path $docker)) {
-                            throw "Docker executable not found."
-                        }
-
-                        $config = Join-Path $env:WORKSPACE ".docker-config"
-                        New-Item -ItemType Directory -Force -Path $config | Out-Null
-                        $env:DOCKER_CONFIG = $config
-
-                        if ([string]::IsNullOrWhiteSpace($env:DOCKER_TOKEN)) {
-                            throw "Docker Hub credential is empty."
-                        }
-
-                        $psi = New-Object System.Diagnostics.ProcessStartInfo
-                        $psi.FileName = $docker
-                        $psi.Arguments = "login --username anishaflipkart27 --password-stdin"
-                        $psi.UseShellExecute = $false
-                        $psi.RedirectStandardInput = $true
-                        $psi.RedirectStandardOutput = $true
-                        $psi.RedirectStandardError = $true
-                        $psi.CreateNoWindow = $true
-                        $psi.EnvironmentVariables["DOCKER_CONFIG"] = $config
-
-                        $p = New-Object System.Diagnostics.Process
-                        $p.StartInfo = $psi
-
-                        if (-not $p.Start()) {
-                            throw "Could not start Docker login."
-                        }
-
-                        $outTask = $p.StandardOutput.ReadToEndAsync()
-                        $errTask = $p.StandardError.ReadToEndAsync()
-
-                        $token = $env:DOCKER_TOKEN.Trim()
-                        $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($token + "`n")
-                        $p.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
-                        $p.StandardInput.Close()
-                        $p.WaitForExit()
-
-                        if ($outTask.Result) {
-                            Write-Host $outTask.Result
-                        }
-
-                        if ($p.ExitCode -ne 0) {
-                            if ($errTask.Result) {
-                                Write-Host $errTask.Result
-                            }
-                            throw "Docker Hub login failed."
-                        }
-
-                        Write-Host "Docker Hub login succeeded."
-                    '''
+                steps {
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'dockerhub-username-pat',
+                            usernameVariable: 'DOCKER_USER',
+                            passwordVariable: 'DOCKER_PAT'
+                        )
+                    ]) {
+                        bat '''
+                            @echo off
+                            echo %DOCKER_PAT% | docker login -u "%DOCKER_USER%" --password-stdin
+                            if errorlevel 1 exit /b 1
+                        '''
+                    }
                 }
             }
-        }
 
         stage('Push Docker Image') {
             steps {
