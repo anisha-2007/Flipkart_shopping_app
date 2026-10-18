@@ -1,17 +1,16 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = 'anishaflipkart27/flipkart_shopping_app'
+        DOCKER_TAG = 'latest'
+    }
+
     options {
         timestamps()
     }
 
-    environment {
-        DOCKER_IMAGE = 'anishaflipkart27/flipkart_shopping_app'
-        DOCKER_TAG   = 'latest'
-    }
-
     stages {
-
         stage('Checkout Source Code') {
             steps {
                 checkout scm
@@ -54,7 +53,6 @@ pipeline {
                         }
 
                         $dockerCommand = Get-Command docker.exe -ErrorAction SilentlyContinue
-
                         if (-not $dockerCommand) {
                             $dockerCommand = Get-Command docker -ErrorAction Stop
                         }
@@ -62,62 +60,21 @@ pipeline {
                         $dockerPath = $dockerCommand.Source
 
                         if ([string]::IsNullOrWhiteSpace($dockerPath)) {
-                            throw "Could not determine the Docker executable path."
+                            throw "Could not find Docker executable."
                         }
+
+                        $dockerConfigPath = Join-Path $env:WORKSPACE ".docker-config"
+                        New-Item -ItemType Directory -Force -Path $dockerConfigPath | Out-Null
+                        $env:DOCKER_CONFIG = $dockerConfigPath
 
                         Write-Host "Docker executable: $dockerPath"
                         Write-Host "Starting Docker Hub login..."
 
-                        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-                        $dockerConfigPath = Join-Path $env:WORKSPACE ".docker-config"
-                        New-Item -ItemType Directory -Force -Path $dockerConfigPath | Out-Null
-                        $startInfo.EnvironmentVariables["DOCKER_CONFIG"] = $dockerConfigPath
-                        $startInfo.FileName = $dockerPath
-                        $startInfo.Arguments = "login --username anishaflipkart27 --password-stdin"
-                        $startInfo.UseShellExecute = $false
-                        $startInfo.RedirectStandardInput = $true
-                        $startInfo.RedirectStandardOutput = $true
-                        $startInfo.RedirectStandardError = $true
-                        $startInfo.CreateNoWindow = $true
+                        $env:DOCKER_TOKEN |
+                            & $dockerPath login --username anishaflipkart27 --password-stdin
 
-                        $process = New-Object System.Diagnostics.Process
-                        $process.StartInfo = $startInfo
-
-                        if (-not $process.Start()) {
-                            throw "Failed to start Docker login."
-                        }
-
-                        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-                        $stderrTask = $process.StandardError.ReadToEndAsync()
-
-                        $utf8 = New-Object System.Text.UTF8Encoding($false)
-                        $cleanToken = $env:DOCKER_TOKEN. Trim()
-                        Write-Host "Token length received by Jenkins: $($cleanToken.Length)"
-                        Write-Host "Token has surrounding whitespace: $($cleanToken -ne $env:DOCKER_TOKEN)"
-                        $tokenBytes = $utf8.GetBytes($cleanToken + "`n")
-
-                        $process.StandardInput.BaseStream.Write(
-                            $tokenBytes,
-                            0,
-                            $tokenBytes.Length
-                        )
-
-                        $process.StandardInput.Close()
-                        $process.WaitForExit()
-
-                        $stdout = $stdoutTask.Result
-                        $stderr = $stderrTask.Result
-
-                        if ($stdout) {
-                            Write-Host $stdout
-                        }
-
-                        if ($process.ExitCode -ne 0) {
-                            if ($stderr) {
-                                Write-Host $stderr
-                            }
-
-                            throw "Docker Hub login failed. Check the credential and Docker Hub response."
+                        if ($LASTEXITCODE -ne 0) {
+                            throw "Docker Hub login failed with exit code $LASTEXITCODE."
                         }
 
                         Write-Host "Docker Hub login succeeded."
@@ -143,22 +100,23 @@ pipeline {
         }
 
         failure {
-            echo 'FAILED: Check the Console Output for the exact failing stage.'
+            echo 'FAILED: Check Console Output for the failing stage.'
         }
 
         always {
-            script {
-                withCredentials([
-                    string(
-                        credentialsId: 'dockerhub-token-secret',
-                        variable: 'DOCKER_TOKEN'
-                    )
-                ]) {
-                    powershell '''
-                        docker logout
-                    '''
+            powershell '''
+                $dockerCommand = Get-Command docker.exe -ErrorAction SilentlyContinue
+                if ($dockerCommand) {
+                    $dockerPath = $dockerCommand.Source
+                    $dockerConfigPath = Join-Path $env:WORKSPACE ".docker-config"
+
+                    if (Test-Path $dockerConfigPath) {
+                        $env:DOCKER_CONFIG = $dockerConfigPath
+                        & $dockerPath logout
+                        Remove-Item -Recurse -Force $dockerConfigPath -ErrorAction SilentlyContinue
+                    }
                 }
-            }
+            '''
         }
     }
 }
