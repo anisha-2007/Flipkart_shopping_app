@@ -56,17 +56,27 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                bat '''
+                    @echo off
+                    kubectl apply -f deployment.yaml
+                    if errorlevel 1 exit /b 1
+
+                    kubectl rollout status deployment/flipkart-deployment --timeout=120s
+                    if errorlevel 1 exit /b 1
+
+                    kubectl get pods
+                    kubectl get services
+                '''
+            }
+        }
     }
-    stage('Deploy to Kubernetes') {
-    steps {
-        bat 'kubectl apply -f deployment.yaml'
-        bat 'kubectl rollout status deployment/flipkart-deployment --timeout=120s'
-    }
-}
 
     post {
         success {
-            echo 'SUCCESS: Docker image built and pushed to Docker Hub.'
+            echo 'SUCCESS: Docker image built, pushed, and Kubernetes deployment completed.'
         }
 
         failure {
