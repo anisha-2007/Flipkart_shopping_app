@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-tk xvfb x11vnc novnc websockify fluxbox xterm procps \
     && rm -rf /var/lib/apt/lists/*
 
+
 COPY . .
 
 EXPOSE 6080
